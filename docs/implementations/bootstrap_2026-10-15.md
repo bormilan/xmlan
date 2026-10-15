@@ -78,3 +78,16 @@ Dialyzer. It rebuilt the pinned plugins with isolated global configuration.
 No Signerl source, local dependency override, generated fixture, or runtime
 server is required. HTTPS/Git dependency consumption and latest-head CI results
 are recorded in the PR and persistent recovery manifest after publication.
+
+## Initial workflow correction
+
+GitHub rejected the first workflow before any jobs started because `runner`
+is unavailable in job-level `env`. Its temporary directory is now resolved in
+step-level `env` and exported through GITHUB_ENV after the runner starts. See
+[GitHub context availability](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability).
+The failed startup is not counted as a passing check. Native `tall` is rerun
+before publishing the correction; all six jobs must pass on the corrected SHA.
+
+The first real HTTPS/Git dependency consumer independently compiled, started,
+ran, and passed Dialyzer with an immutable xmlan ref and generated lockfile.
+That probe is repeated against the corrected publication SHA.

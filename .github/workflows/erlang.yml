@@ -11,8 +11,6 @@ jobs:
   ci:
     name: OTP ${{matrix.otp_vsn}} on ${{matrix.os}}
     runs-on: ${{matrix.os}}
-    env:
-      REBAR_GLOBAL_CONFIG_DIR: ${{runner.temp}}/xmlan-global-config
     strategy:
       fail-fast: false
       matrix:
@@ -20,8 +18,12 @@ jobs:
         os: [ubuntu-24.04, windows-2022]
     steps:
       - name: Isolate global rebar3 configuration
+        env:
+          REBAR_GLOBAL_CONFIG_DIR: ${{runner.temp}}/xmlan-global-config
         shell: bash
-        run: mkdir -p "$REBAR_GLOBAL_CONFIG_DIR"
+        run: |
+          mkdir -p "$REBAR_GLOBAL_CONFIG_DIR"
+          echo "REBAR_GLOBAL_CONFIG_DIR=$REBAR_GLOBAL_CONFIG_DIR" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - name: Read development toolchain
         id: toolchain
