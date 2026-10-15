@@ -1,0 +1,7 @@
+_build/
+*.beam
+*.plt
+*.plt.*
+/rebar3.crashdump
+/erl_crash.dump
+.DS_Store
