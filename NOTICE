@@ -1,0 +1,5 @@
+xmlan contains XML tree helpers and tests extracted from Signerl.
+Source: https://github.com/bormilan/signerl
+Baseline: 5927e41bab8674b875c51df1a1ec956d42676992
+Extraction contract: Signerl issue #83, merged in 2f7d08db5bfd88f8f907c9dde15121a80b1ef9ee.
+Signerl declares Apache-2.0 licensing; its LICENSE.md is preserved here.
