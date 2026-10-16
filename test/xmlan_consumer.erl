@@ -29,7 +29,8 @@ run() ->
 -spec run(string()) -> ok.
 run(Dir) ->
     _ = run(),
-    check_xml(Dir),
+    Tree = check_xml(Dir),
+    check_canonical(Dir, Tree),
     ok.
 
 check_xml(Dir) ->
@@ -51,8 +52,18 @@ check_xml(Dir) ->
     ?assertEqual(Item, xmlan:with_namespace_context(Item, Context)),
     ?assertMatch(
         {{<<"urn:invoice">>, <<"invoice">>}, _, _}, xmlan:expanded_names(ExpectedTree)
-    ).
+    ),
+    ExpectedTree.
 
 read(Dir, Name) ->
     {ok, Bytes} = file:read_file(filename:join(Dir, Name)),
     Bytes.
+
+check_canonical(Dir, Tree) ->
+    ?assertEqual(read(Dir, "c14n11.xml"), xmlan_c14n:canonicalize(Tree)),
+    ?assertEqual(read(Dir, "c14n11.xml"), canonical_bytes(Tree, c14n11)),
+    ?assertEqual(read(Dir, "exclusive.xml"), canonical_bytes(Tree, exc_c14n)).
+
+-spec canonical_bytes(xmlan:simplified_xml(), xmlan_c14n:c14n_mode()) -> binary().
+canonical_bytes(Tree, Mode) ->
+    xmlan_c14n:canonicalize(Tree, Mode).

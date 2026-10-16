@@ -1,12 +1,11 @@
 # xmlan
 
 An ordinary Erlang library for UTF-8 XML parsing, serialization, namespace
-selection, and transparent XML trees, extracted from
+selection, canonicalization, and transparent XML trees, extracted from
 [Signerl](https://github.com/bormilan/signerl). It uses OTP's `xmerl` without
 Signerl sources, operation servers, cryptographic tools, or third-party runtime
-dependencies. Generic canonicalization follows in
-[Signerl #86](https://github.com/bormilan/signerl/issues/86); Signerl's dependency
-integration and removal of its original generic bodies follow in
+dependencies. The generic XML implementation is now available here; Signerl's
+dependency integration and removal of its original generic bodies follow in
 [Signerl #87](https://github.com/bormilan/signerl/issues/87).
 
 ## Parse and serialize
@@ -94,11 +93,47 @@ results. Lexical selectors retain the original tuple without adding context.
 Namespace helpers preserve prefixes rather than rewriting them. XMLDSig/XAdES
 identities, signature-removal rules, and cryptography belong to Signerl.
 
+## Canonicalize
+
+```erlang
+{ok, Tree} = xmlan:parse_binary(
+    <<"<root xmlns:p='urn:item'><p:item b='2' a='1'/></root>">>),
+C14N11 = xmlan_c14n:canonicalize(Tree),
+C14N11 = xmlan_c14n:canonicalize(Tree, c14n11),
+Exclusive = xmlan_c14n:canonicalize(Tree, exc_c14n).
+```
+
+`xmlan_c14n:canonicalize/1,2` return canonical UTF-8 bytes using the existing
+Signerl C14N 1.1 or Exclusive C14N profile. `c14n11` is the default;
+`xmlan_c14n:c14n_mode/0` is the public `c14n11 | exc_c14n` type.
+Output has no XML declaration or appended LF and expands empty elements.
+Namespaces and attributes are sorted, values and text are escaped, implicit
+XML/default bindings are handled, and binary/list namespace values normalize to
+the same result. Exclusive mode emits visibly used namespaces; C14N 1.1 emits
+new/changed declarations. Prefixes retain their original spelling.
+
+Use `with_namespace_context/2` or expanded-name selectors before canonicalizing
+a detached subtree whose bindings come from ancestors. Canonicalize the lexical
+tree; `expanded_names/1` is a metadata projection. The frozen byte corpus and
+xmllint comparisons cover both supported modes, including default undeclaration,
+local rebinding, Unicode, mixed content, and inherited fragment context.
+
+The API accepts transparent caller-built tuples without running parser validation.
+Existing invalid-input boundaries are retained: unsupported modes/malformed
+shapes raise exceptions, relative namespace URIs fail, and Exclusive C14N raises
+`{undeclared_namespace_prefix, PrefixString}` for missing context. The extraction
+preserves the existing supported profile rather than adding broader conformance.
+Signature algorithm URI selection, enveloped transforms, and digest/signature
+processing belong to Signerl.
+
 ## Build and validate
 
 Supported runtimes: OTP 26, 27, and 28. Development pins in `.tool-versions` are
 OTP 28.5.0.7 and rebar3 3.25.1. Project plugins are erlfmt 1.8.0 and
 rebar3_lint/Elvis 5.0.4. Runtime applications are OTP kernel, stdlib, and xmerl.
+The interoperability tests require `xmllint` on PATH; it is not a runtime dependency.
+CI installs `libxml2-utils` on Linux and verifies xmllint availability in every job.
+Missing xmllint fails the test gate instead of skipping interoperability checks.
 
 ```sh
 rebar3 compile
@@ -157,8 +192,9 @@ The implementation and adapted tests come from Signerl's XML foundation at
 `5927e41bab8674b875c51df1a1ec956d42676992`. The migration boundary was approved in
 [Signerl #83](https://github.com/bormilan/signerl/issues/83); tree/value helpers
 were bootstrapped in [#84](https://github.com/bormilan/signerl/issues/84), and
-parser/export/namespace extraction tracks
-[#85](https://github.com/bormilan/signerl/issues/85). Frozen generic XML outputs
+parser/export/namespace extraction is
+[#85](https://github.com/bormilan/signerl/issues/85), and generic canonicalization
+is [#86](https://github.com/bormilan/signerl/issues/86). Frozen generic XML outputs
 from #83 are preserved with their
 [original hashes and provenance](test/examples/xmlan_migration/README.md).
 See [NOTICE](NOTICE) and the preserved [Apache-2.0 license](LICENSE.md).
