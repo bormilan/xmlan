@@ -7,7 +7,7 @@ probe_dir=$(mktemp -d)
 trap 'rm -rf "$probe_dir"' EXIT HUP INT TERM
 rebar_command=${REBAR3:-rebar3}
 
-cp -R "$xmlan_root/src" "$xmlan_root/test" "$probe_dir/"
+cp -R "$xmlan_root/src" "$xmlan_root/include" "$xmlan_root/test" "$probe_dir/"
 cp "$xmlan_root/rebar.config" "$xmlan_root/elvis.config" "$probe_dir/"
 mkdir -p "$probe_dir/global-config"
 sed 's/unicode:characters_to_binary(Text)/list_to_binary(Text)/' \
