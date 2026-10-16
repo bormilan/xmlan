@@ -1,4 +1,4 @@
-xmlan contains generic XML parsing, serialization, namespace/tree helpers and tests extracted from Signerl.
+xmlan contains generic XML parsing, serialization, namespace/tree helpers, canonicalization and tests extracted from Signerl.
 Source: https://github.com/bormilan/signerl
 Baseline: 5927e41bab8674b875c51df1a1ec956d42676992
 Extraction contract: Signerl issue #83, merged in 2f7d08db5bfd88f8f907c9dde15121a80b1ef9ee.

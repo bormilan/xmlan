@@ -10,13 +10,14 @@ captured on 14 October 2026 from unchanged Signerl `dev`
 - `parsed.term`: exact parsed transparent tuple/value representation.
 - `export.xml` and `fragment.xml`: exact serialization, including prolog,
   escaping, ordering, and the differing final-newline contracts.
+- `c14n11.xml` and `exclusive.xml`: exact baseline canonical bytes for both modes,
+  copied in #86 with their original hashes.
 - `SHA256SUMS`: the corresponding original hashes, copied without recapturing
   output from xmlan. XML files have Git text conversion disabled on all platforms.
 
 The consumer reads expected values as files; it never regenerates goldens from
 the current implementation. These outputs freeze prior behavior, not independent
-standards conformance. C14N fixtures remain part of #86; signed output and key
-fixtures remain owned by Signerl. No cryptographic material is needed here.
+standards conformance. Signed output and key fixtures remain owned by Signerl. No cryptographic material is needed here.
 
 Run `rebar3 ct --suite test/xmlan_SUITE`; the same consumer runs outside the test
 profile as described in [test responsibilities](../../TESTS.md). A changed golden

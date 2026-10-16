@@ -172,6 +172,8 @@ probe_xml_name(N) ->
     {ok, Parsed} = xmlan:parse_binary(Xml),
     {ok, Parsed} = xmlan:parse_binary(xmlan:export([], Parsed)),
     {ok, Parsed} = xmlan:parse_binary(xmlan:export_fragment(Parsed)),
+    _ = xmlan_c14n:canonicalize(Parsed, c14n11),
+    _ = xmlan_c14n:canonicalize(Parsed, exc_c14n),
     {error, invalid_xml} = xmlan:parse_binary(
         <<"<broken_", Suffix/binary, "/>trailing garbage">>
     ),
