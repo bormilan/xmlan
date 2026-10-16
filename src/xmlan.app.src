@@ -2,7 +2,7 @@
     {description, "XML tree handling for Erlang"},
     {vsn, "0.1.0"},
     {registered, []},
-    {applications, [kernel, stdlib]},
+    {applications, [kernel, stdlib, xmerl]},
     {env, []},
     {modules, []},
     {licenses, ["Apache-2.0"]},

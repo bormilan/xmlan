@@ -3,3 +3,8 @@
 *.app.src text eol=lf
 /rebar.config text eol=lf
 *.sh text eol=lf
+
+# Preserve byte-for-byte XML fixtures on Windows as well as Unix.
+test/examples/**/*.xml -text
+*.term text eol=lf
+**/SHA256SUMS text eol=lf

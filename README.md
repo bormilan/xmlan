@@ -1,11 +1,65 @@
 # xmlan
 
-An ordinary Erlang library for transparent XML trees, extracted from
-[Signerl](https://github.com/bormilan/signerl). This bootstrap implements pure
-tree/value helpers. Parsing, serialization, namespace operations, and generic
-canonicalization follow in Signerl issues #85/#86; Signerl integration is #87.
+An ordinary Erlang library for UTF-8 XML parsing, serialization, namespace
+selection, and transparent XML trees, extracted from
+[Signerl](https://github.com/bormilan/signerl). It uses OTP's `xmerl` without
+Signerl sources, operation servers, cryptographic tools, or third-party runtime
+dependencies. Generic canonicalization follows in
+[Signerl #86](https://github.com/bormilan/signerl/issues/86); Signerl's dependency
+integration and removal of its original generic bodies follow in
+[Signerl #87](https://github.com/bormilan/signerl/issues/87).
 
-## Current API
+## Parse and serialize
+
+```erlang
+{ok, Tree} = xmlan:parse_binary(
+    <<"<?xml version='1.0'?><root xmlns:p='urn:item'><p:item>hello</p:item></root>">>),
+{ok, Item} = xmlan:find_path([{<<"urn:item">>, <<"item">>}], Tree),
+{ok, <<"hello">>} = xmlan:single_text(Item),
+Fragment = xmlan:export_fragment(Item),
+{ok, Prolog} = xmlan:parse_prolog(<<"<?xml version='1.0'?><root/>">>),
+Bytes = xmlan:export(Prolog, Tree),
+ok = xmlan:to_file("output.xml", Bytes),
+Tree = xmlan:parse_file("output.xml").
+```
+
+`parse_binary/1` returns `{ok, Tree}` or `{error, invalid_xml}`. It consumes a
+complete UTF-8 document, with or without a declaration (and with a UTF-8 BOM).
+Malformed UTF-8, NUL/UTF-16/32 input, non-UTF-8 declarations, DTDs, custom or
+undeclared entities, processing instructions, and trailing documents/garbage are
+rejected. External files and HTTP resources are never retrieved. Predefined
+entities and character references are supported. Comments are omitted; CDATA,
+mixed content, whitespace, Unicode, XML line-ending normalization, and character
+references retain the existing parsed-value contract.
+
+Namespace validation rejects unbound/invalid QNames, reserved bindings, duplicate
+expanded attributes, and relative namespace URIs. An empty default namespace
+undeclaration is allowed. Lexical prefixes and child/attribute order are retained.
+The parser does not create atoms from XML names.
+
+`parse_file/1` accepts a character-list path and returns the tree directly;
+failed file reads or invalid documents raise the existing badmatch exception.
+`to_file/2` returns `ok` or the unchanged `file:write_file/2` error result.
+
+`parse_prolog/1` only extracts and validates the leading declaration, returning
+its original spelling as `{ok, [String]}` or `{error, invalid_prolog}`. It requires
+a declaration at byte zero and rejects a BOM. It does not validate the document
+body. `export/2` emits the supplied prolog and appends one LF; `export_fragment/1`
+prefixes `<?xml version="1.0"?>` and appends no LF. Both escape text/attributes,
+encode Unicode as UTF-8, and preserve referenced CRs and attribute tabs/newlines.
+Export rejects a supplied non-UTF-8 encoding declaration. Export and namespace
+projection use explicit work stacks, and tests retain 10,000-level trees.
+
+## Public values and tree helpers
+
+`xmlan:simplified_xml/0` is a transparent tuple type:
+`{BinaryName, [{BinaryName, Value}], Children}`. Names and binary values are UTF-8;
+character lists contain Unicode code points. Parsed attribute values and text
+are character lists. Caller-built attributes may also be binaries, integers, or
+atoms; children may be trees, character lists, or binaries. Callers can construct
+and pattern-match tuples without conversion to an opaque representation.
+`attribute_value/0`, `expanded_name/0`, `expanded_xml/0`, and
+`namespace_context/0` are also public transparent types.
 
 ```erlang
 Tree = {<<"root">>, [{<<"id">>, "7"}], [<<"hello">>]},
@@ -15,37 +69,36 @@ undefined = xmlan:attr_value_or_undefined(<<"missing">>, element(2, Tree)),
 WithChild = xmlan:add_new_element({<<"child">>, [], []}, Tree).
 ```
 
-`add_new_element/2` appends the new child after existing content. `single_text/1`
-accepts exactly one binary or Unicode character-list text child and returns UTF-8
+`add_new_element/2` appends a child after existing content. `single_text/1`
+accepts exactly one binary or Unicode character-list child and returns UTF-8
 bytes; missing, multiple, or element children return `{error, not_found}`.
 Attribute lookup uses exact binary names and the first matching entry.
 `attr_value/2` returns `{error, missing_attribute}` when absent; the optional form
-returns `undefined`. Existing values are returned unchanged, including an explicit
-`undefined` attribute value. No helper validates XML names or mutates its input.
+returns `undefined`. Existing values, including explicit `undefined`, are returned
+unchanged. Tree helpers/export accept caller-built tuples; parser validation is
+not an implicit validation pass over those tuples.
 
-## Public values and supported scope
+## Namespace helpers
 
-`xmlan:simplified_xml/0` is a transparent tuple type:
-`{BinaryName, [{BinaryName, Value}], Children}`. Names and binary values are UTF-8;
-character lists contain Unicode code points. Attribute values may be character
-lists, binaries, integers, or atoms; children may be trees, lists, or binaries.
-Callers can construct tuples and pattern-match them. `attribute_value/0`,
-`expanded_name/0`, `expanded_xml/0`, and `namespace_context/0` are also public
-transparent types, matching the approved extraction contract.
+| API | Behavior |
+| --- | --- |
+| `find_path(Path, Tree)` | A nonempty path selects unique direct children at each step. Binary selectors match lexical names; `{URI, Local}` selectors match expanded element names. Missing or ambiguous paths return `{error, not_found}`. |
+| `find_children({URI, Local}, Tree)` | Returns matching direct children in content order; no matches return `[]`. |
+| `namespace_context(Attrs, ParentMap)` | Applies local declarations over inherited bindings, including implicit `xml` and empty default bindings. |
+| `with_namespace_context(Tree, ParentMap)` | Appends missing, nonempty inherited declarations; local declarations and default undeclaration win. |
+| `expanded_name(Tree, ParentMap)` | Returns `{URI, Local}`; undeclared prefixes on caller-built trees yield `undefined`. |
+| `expanded_names(Tree)` | Projects element names with inherited scope, retaining lexical attributes, values, text, and order. |
 
-There is no parser or canonicalizer in this bootstrap. Later extraction retains
-the existing supported profile: complete UTF-8 input, preserved content, DTD/PI
-rejection, no external entity retrieval or XML-name atom creation, absolute
-namespace URIs apart from default undeclaration, C14N 1.1/Exclusive C14N. These
-are migration requirements, not capabilities provided by the current four helpers.
-XMLDSig/XAdES rules, signature transforms, and cryptography belong to Signerl.
+Expanded-name selectors materialize inherited namespace declarations on detached
+results. Lexical selectors retain the original tuple without adding context.
+Namespace helpers preserve prefixes rather than rewriting them. XMLDSig/XAdES
+identities, signature-removal rules, and cryptography belong to Signerl.
 
 ## Build and validate
 
 Supported runtimes: OTP 26, 27, and 28. Development pins in `.tool-versions` are
 OTP 28.5.0.7 and rebar3 3.25.1. Project plugins are erlfmt 1.8.0 and
-rebar3_lint/Elvis 5.0.4. No runtime dependencies beyond OTP kernel/stdlib,
-Signerl checkout, generated keys, or operation servers are needed.
+rebar3_lint/Elvis 5.0.4. Runtime applications are OTP kernel, stdlib, and xmerl.
 
 ```sh
 rebar3 compile
@@ -95,14 +148,17 @@ rebar's resulting lockfile:
 
 Replace the placeholder with the validated revision. Add `xmlan` to the consumer's
 application dependencies. No local path override, sibling checkout, or Signerl
-source is required. Bootstrap code is published through a PR targeting `dev`;
-`main` remains the release branch. A release/tag or Hex publication is not part
-of this bootstrap.
+source is required. Extraction PRs target `dev`; `main` remains the release branch.
+A release/tag or Hex publication is not part of this extraction.
 
 ## Provenance
 
-The types/helpers and adapted tests come from Signerl's XML foundation at
+The implementation and adapted tests come from Signerl's XML foundation at
 `5927e41bab8674b875c51df1a1ec956d42676992`. The migration boundary was approved in
-[Signerl #83](https://github.com/bormilan/signerl/issues/83); this bootstrap tracks
-[Signerl #84](https://github.com/bormilan/signerl/issues/84). See [NOTICE](NOTICE)
-and the preserved [Apache-2.0 license](LICENSE.md).
+[Signerl #83](https://github.com/bormilan/signerl/issues/83); tree/value helpers
+were bootstrapped in [#84](https://github.com/bormilan/signerl/issues/84), and
+parser/export/namespace extraction tracks
+[#85](https://github.com/bormilan/signerl/issues/85). Frozen generic XML outputs
+from #83 are preserved with their
+[original hashes and provenance](test/examples/xmlan_migration/README.md).
+See [NOTICE](NOTICE) and the preserved [Apache-2.0 license](LICENSE.md).
